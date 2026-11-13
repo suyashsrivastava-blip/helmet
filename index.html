@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Live Helmet Status</title>
+<style>
+  :root{--bg:#0a0d12;--fg:#fff}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;overflow:hidden}
+  body{background:var(--bg);color:var(--fg);font-family:system-ui,Arial,sans-serif;display:flex;flex-direction:column;
+       align-items:center;justify-content:center;text-align:center;transition:background .3s}
+  #word{font-size:15vw;font-weight:900;letter-spacing:.03em;line-height:1;z-index:2;text-shadow:0 0 30px rgba(0,0,0,.4)}
+  #sub{font-size:max(16px,2.4vw);margin-top:2vh;opacity:.9;z-index:2;padding:0 6vw}
+  #foot{position:fixed;bottom:6px;left:0;right:0;font-size:max(12px,1.4vw);opacity:.55;z-index:2}
+  #host{position:fixed;top:10px;right:10px;z-index:5;display:none}
+  #host button,#snd{font-size:max(14px,1.6vw);padding:8px 16px;border:0;border-radius:10px;background:#2d7dff;color:#fff}
+  #snd{position:fixed;top:10px;left:10px;z-index:5;background:#333}
+  /* helmet back view with 3 LED sections, mirrors the real helmet */
+  #helmet{width:min(52vw,38vh);height:auto;z-index:2;margin-bottom:2vh}
+  .led{fill:#3a1010;transition:fill .15s}
+  /* ---------- states ---------- */
+  body.ride #word{color:#35d07f}
+  body.ride{background:radial-gradient(circle at 50% 40%,#0f2a1d,#0a0d12 70%)}
+  body.brake{background:radial-gradient(circle at 50% 55%,#8a0000,#2a0000 70%);animation:bpulse 1.1s ease-in-out infinite}
+  body.brake .led{fill:#ff1a1a;filter:drop-shadow(0 0 14px #ff0000) drop-shadow(0 0 30px #ff0000)}
+  body.brake #word{color:#fff;font-size:19vw}
+  @keyframes bpulse{50%{filter:brightness(1.35)}}
+  body.crash{animation:strobe .25s steps(1) infinite}
+  body.crash #helmet,body.crash #word,body.crash #sub,body.crash #info{animation:quake .14s linear infinite}
+  #cracks{position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:0}
+  body.crash #cracks{opacity:.75;animation:crackflash .5s steps(1) infinite}
+  @keyframes crackflash{50%{opacity:.25}}
+  @keyframes quake{0%{transform:translate(0,0) rotate(0)}10%{transform:translate(-2.4vmin,1.2vmin) rotate(-1.6deg)}20%{transform:translate(2vmin,-1.8vmin) rotate(1.4deg)}30%{transform:translate(-1.2vmin,2.2vmin) rotate(-.8deg)}40%{transform:translate(2.6vmin,.8vmin) rotate(1.8deg)}50%{transform:translate(-2.2vmin,-1.4vmin) rotate(-1.2deg)}60%{transform:translate(1.4vmin,2vmin) rotate(.9deg)}70%{transform:translate(-2.8vmin,-.6vmin) rotate(-1.7deg)}80%{transform:translate(1.8vmin,-2.2vmin) rotate(1.1deg)}90%{transform:translate(-.8vmin,1.6vmin) rotate(-.6deg)}100%{transform:translate(0,0) rotate(0)}}
+  body.crash #word{font-size:21vw;color:inherit}
+  body.crash .led{animation:ledblink .2s steps(1) infinite}
+  @keyframes strobe{0%{background:#ff0000;color:#fff}50%{background:#fff;color:#e00000}}
+  @keyframes shake{0%,100%{transform:translate(0,0)}25%{transform:translate(-6px,4px)}50%{transform:translate(6px,-4px)}75%{transform:translate(-4px,-5px)}}
+  @keyframes ledblink{0%{fill:#ff1a1a;filter:drop-shadow(0 0 20px red)}50%{fill:#3a1010;filter:none}}
+  .ring{position:fixed;left:50%;top:50%;width:10px;height:10px;border:4px solid #ff2a2a;border-radius:50%;
+        transform:translate(-50%,-50%);opacity:0;pointer-events:none}
+  body.crash .ring{animation:ring 1.4s ease-out infinite}
+  body.crash .ring:nth-of-type(2){animation-delay:.45s}
+  body.crash .ring:nth-of-type(3){animation-delay:.9s}
+  @keyframes ring{0%{width:10px;height:10px;opacity:.9}100%{width:160vmax;height:160vmax;opacity:0}}
+  body.off #word{color:#888}
+</style>
+</head>
+<body class="off">
+  <button id="snd">🔇 Sound off</button>
+  <div id="host"><button id="connect">Connect helmet</button> <button id="connectAll" style="background:#444">Show all devices</button></div>
+  <svg id="cracks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><g fill="none" stroke="#000" stroke-width=".5" stroke-linejoin="bevel"><polyline points="50,0 47,12 53,22 46,35 52,48 44,60 50,74 45,86 48,100"/><polyline points="53,22 66,28 72,40 85,44 100,52"/><polyline points="46,35 33,38 24,50 10,54 0,60"/><polyline points="52,48 60,62 58,78 68,88 70,100"/><polyline points="44,60 34,72 28,84 18,92 12,100"/><polyline points="72,40 76,26 88,18 96,6"/><polyline points="24,50 20,36 8,28 2,14"/></g></svg>
+  <i class="ring"></i><i class="ring"></i><i class="ring"></i>
+
+  <svg id="helmet" viewBox="0 0 200 170" aria-hidden="true">
+    <path d="M20 110 C20 45 60 15 100 15 C140 15 180 45 180 110 L180 125 C180 135 172 140 162 140 L38 140 C28 140 20 135 20 125 Z" fill="#cfd5dd"/>
+    <path d="M30 108 C30 52 64 26 100 26 C136 26 170 52 170 108 Z" fill="#aab2bd"/>
+    <rect x="48" y="104" width="30" height="16" rx="5" class="led"/>
+    <rect x="85" y="104" width="30" height="16" rx="5" class="led"/>
+    <rect x="122" y="104" width="30" height="16" rx="5" class="led"/>
+  </svg>
+  <div id="word">…</div>
+  <div id="sub">Connecting…</div>
+  <div id="foot"></div>
+
+<script>
+/* ================= SETUP (one time) =================
+   1. Create a free Firebase project → Build → Realtime Database → Create (test mode).
+   2. Paste its URL below (looks like https://xxxx-default-rtdb.firebaseio.com), no trailing slash.
+*/
+const DB_URL = "PASTE_YOUR_FIREBASE_DATABASE_URL_HERE";
+
+const SERVICE='12345678-1234-5678-1234-56789abcdef0', ALERT='12345678-1234-5678-1234-56789abcdef2';
+const NODE = DB_URL + '/helmet.json';
+const BRAKE_HOLD_MS = 2000;      // minimum time BRAKING stays on screen = helmet's BRAKE_HOLD_DUR (2000 ms). Raise to show longer.
+const CRASH_HOLD_MS = 15000;     // keep ACCIDENT on screen this long after the last crash alert
+const OFFLINE_AFTER_MS = 15000;  // no heartbeat from the bridge phone → show "helmet offline"
+// Direct mode: with no Firebase URL set, the plain link itself lets anyone connect to the helmet.
+const isHost = location.hash === '#host' || DB_URL.includes('PASTE_');
+const $ = id => document.getElementById(id);
+
+let soundOn = false, audio = null, osc = null;
+let lastEvent = 0, crashUntil = 0, brakeUntil = 0, cur = 'RIDE', statusMsg = '';
+function setStatus(t){ statusMsg = t; render(); }
+
+/* ---------- display ---------- */
+function render(){
+  const now = Date.now();
+  let mode;
+  if (now < crashUntil) mode = 'crash';
+  else if (now - lastEvent > OFFLINE_AFTER_MS) mode = 'off';
+  else mode = (cur === 'BRAKE' || now < brakeUntil) ? 'brake' : 'ride';
+  document.body.className = mode;
+  const t = {crash:['ACCIDENT','Rider may need help — emergency services should be called'],
+             brake:['BRAKING','Rider is braking'],
+             ride:['RIDING','All normal'],
+             off:['OFFLINE','Waiting for the helmet…']}[mode];
+  $('word').textContent = t[0]; $('sub').textContent = (mode==='off' && statusMsg) ? statusMsg : t[1];
+  $('foot').textContent = isHost ? ('BRIDGE MODE — keep this screen open' + (lastRaw ? '  ·  last packet: ' + lastRaw : '')) : 'Live · updates instantly';
+  siren(mode === 'crash');
+}
+setInterval(render, 300);
+
+function apply(st){
+  if (!st) return;
+  lastEvent = Date.now();
+  if (st.st === 'BRAKE') {
+    if (cur !== 'BRAKE') brakeUntil = Date.now() + BRAKE_HOLD_MS;   // new brake: hold at least as long as the helmet LEDs
+    cur = 'BRAKE';
+  } else cur = 'RIDE';
+  if (st.st === 'CRASH') crashUntil = Date.now() + CRASH_HOLD_MS;
+  render();
+}
+
+/* ---------- siren (viewer must tap once; browsers block auto-sound) ---------- */
+$('snd').onclick = () => {
+  soundOn = !soundOn; $('snd').textContent = soundOn ? '🔊 Sound on' : '🔇 Sound off';
+  if (soundOn && !audio) { try{ audio = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if (!soundOn) siren(false);
+};
+function siren(on){
+  if (!audio) return;
+  if (on && soundOn && !osc){
+    osc = audio.createOscillator(); const g = audio.createGain(); g.gain.value = .35;
+    osc.type='square'; osc.connect(g); g.connect(audio.destination); osc.start();
+    let hi=false; osc._t=setInterval(()=>{hi=!hi;osc.frequency.value=hi?1200:800},350);
+  } else if ((!on || !soundOn) && osc){ clearInterval(osc._t); try{osc.stop()}catch(e){} osc=null; }
+}
+
+/* ---------- VIEWER: live stream from Firebase ---------- */
+function viewer(){
+  if (DB_URL.includes('PASTE_')) { setStatus('Setup needed: add the Firebase URL in the file'); return; }
+  const es = new EventSource(NODE);
+  const onData = e => { try{
+      const m = JSON.parse(e.data); if (!m) return;
+      if (m.path === '/') apply(m.data); else if (m.data !== null) { /* partial update */ apply(Object.assign({}, lastObj, {[m.path.slice(1)]:m.data})); }
+      if (m.path === '/' && m.data) lastObj = m.data;
+    }catch(err){} };
+  let lastObj = {};
+  es.addEventListener('put', onData); es.addEventListener('patch', onData);
+  es.onerror = () => {};   // EventSource reconnects by itself
+}
+
+/* ---------- HOST: helmet BLE → Firebase ---------- */
+let hostState = 'RIDE';
+function push(st){
+  hostState = st;
+  if (DB_URL.includes('PASTE_')) return;   // no Firebase set → local-only (exhibition) mode
+  fetch(NODE, {method:'PUT', body: JSON.stringify({st, ts:{'.sv':'timestamp'}})}).catch(()=>{});
+}
+let hbTimer = null, lastRaw = '';
+function host(){
+  $('host').style.display = 'block';
+  $('foot').textContent = 'BRIDGE MODE';
+  let dev = null;
+  async function link(){
+    const srv = await dev.gatt.connect();
+    const ch  = await (await srv.getPrimaryService(SERVICE)).getCharacteristic(ALERT);
+    await ch.startNotifications();
+    ch.addEventListener('characteristicvaluechanged', e => {
+      const txt = new TextDecoder().decode(e.target.value); lastRaw = txt;
+      let st = null; try{ st = JSON.parse(txt).ST; }catch(_){ const m = txt.match(/"ST":"(\w+)/); if (m) st = m[1]; }
+      if (st){ push(st); apply({st}); }
+    });
+    $('host').style.display='none'; push('MOD'); apply({st:'MOD'});
+  }
+  async function keepTrying(){            // auto-reconnect forever, no clicks needed
+    for(;;){
+      try{ await link(); return; }
+      catch(err){ setStatus('Reconnecting… (' + (err.message||err) + ')'); await new Promise(r=>setTimeout(r,2000)); }
+    }
+  }
+  async function pick(all){
+    if (!navigator.bluetooth){ setStatus('This browser has no Web Bluetooth. Use Chrome or Edge.'); return; }
+    try{
+      setStatus('Searching… pick "Headfox-Env" in the popup');
+      const opts = all ? {acceptAllDevices:true, optionalServices:[SERVICE]}
+                       : {filters:[{services:[SERVICE]},{name:'Headfox-Env'},{namePrefix:'Head'}], optionalServices:[SERVICE]};
+      dev = await navigator.bluetooth.requestDevice(opts);
+      dev.addEventListener('gattserverdisconnected', () => { setStatus('Reconnecting to helmet…'); keepTrying(); });
+      setStatus('Connecting to ' + (dev.name || 'device') + '…');
+      await keepTrying();
+      try{ await navigator.wakeLock.request('screen'); }catch(e){}
+      document.addEventListener('visibilitychange', async()=>{ try{ if(!document.hidden) await navigator.wakeLock.request('screen'); }catch(e){} });
+      if (!hbTimer) hbTimer = setInterval(()=>{ if (dev && dev.gatt.connected) lastEvent = Date.now(); push(hostState); }, 4000);
+    }catch(err){ setStatus('Failed: ' + err.name + ' — ' + err.message); }
+  }
+  $('connect').onclick    = () => pick(false);
+  $('connectAll').onclick = () => pick(true);
+  setStatus('Press "Connect helmet"');
+}
+
+isHost ? host() : viewer();
+addEventListener('hashchange', () => location.reload());
+// keyboard test: B = brake, C = crash, R = ride (works on any page, local only)
+addEventListener('keydown', e => { const k=e.key.toLowerCase();
+  if(k==='b')apply({st:'BRAKE'}); if(k==='c')apply({st:'CRASH'}); if(k==='r')apply({st:'MOD'}); });
+render();
+</script>
+</body>
+</html>
